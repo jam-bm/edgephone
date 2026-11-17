@@ -28,6 +28,7 @@ On Android 14+ you can instead enable Developer options > "Disable child process
 ## Battery and Wi-Fi metrics are missing
 
 - `edgephone_probe_success{probe="battery"} 0` with "not found": run `pkg install termux-api`.
+- **Termux from Google Play**: these metrics can't work there. See [Termux from Google Play](#termux-from-google-play).
 - "timed out": the **Termux:API app** isn't installed, or it comes from a different source than Termux.
   Install both from F-Droid. Play Store and F-Droid builds are signed differently and can't talk to each other.
 - The Wi-Fi SSID shows `<unknown ssid>`: Android hides it without location permission. RSSI and link speed still work.
@@ -56,8 +57,9 @@ as "running", and Android kernels keep many of those. Watch how it changes over 
 
 ## CPU usage is missing but load average works
 
-This is expected on Android 8 and later, where SELinux blocks `/proc/stat` for apps. `edgephone_load_average` is
-still reported.
+This is expected on Android 8 and later, where SELinux usually blocks `/proc/stat` for apps, and
+`edgephone_load_average` is still reported. If load average is missing too, you are probably on the Google Play
+build of Termux, which can't read `/proc/loadavg` either.
 
 ## DNS lookups fail inside services or edgephone
 

@@ -38,8 +38,26 @@ the whole story.
 they go through an Android broadcast) while the fast `/proc` and `statfs` reads run inline. Each probe
 fails on its own: a failure stores a message in `Snapshot.Errors[name]` and sets that field to `nil`.
 
-`/proc/stat` is optional. SELinux denies it to apps on Android 8+, so CPU usage is reported only when
-it can be read, while load averages from `/proc/loadavg` are always available.
+`/proc/stat` and `/proc/loadavg` depend on the app's SELinux domain. `adb shell` can read both, many
+Termux installs can read only `/proc/loadavg`, and the Google Play build of Termux can read neither.
+CPU usage is reported only when `/proc/stat` can be read; when `/proc/loadavg` can't, the whole `cpu`
+probe reports failure and memory and disk carry on.
+
+## Starting programs on Termux
+
+The Google Play build of Termux targets a recent Android API level, so the app may not execute files it
+wrote itself. Its `termux-exec` library (loaded with `LD_PRELOAD`) rewrites `exec` calls to run them
+through `/system/bin/linker64` instead. Go makes system calls directly and never goes through that
+library.
+
+`internal/termux` does the same rewrite. When `os.Executable()` is the loader (which is how the Play build
+started edgephone), it drops the extra argument the loader inserts into `os.Args`, and
+`termux.CommandContext` runs ELF files as `linker64 <file> args…`. Scripts are resolved through their `#!`
+line first, with `/bin/x` and `/usr/bin/x` mapped to `$PREFIX/bin/x`. Everywhere else it is plain
+`exec.CommandContext`.
+
+Service processes started this way are ordinary processes with the same PID, so process groups, signals
+and `cleanupGroup` work unchanged.
 
 ## Metrics
 

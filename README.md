@@ -46,7 +46,7 @@ Use the F-Droid builds of all three apps for the full feature set. `edgephone do
 `edgephone doctor` on a fresh phone (sample output):
 
 ```text
-[ ok ] Termux                  running inside Termux on samsung SM-A305F (Android 11)
+[ ok ] Termux                  running inside Termux on samsung SM-A305FN (Android 11)
 [ ok ] Binary                  built for android/arm64
 [FAIL] Termux:API              termux-battery-status did not answer: termux-battery-status timed out (is the Termux:API app installed?)
                                Install the Termux:API *app* from F-Droid (same source as Termux), then open it once.
@@ -75,6 +75,23 @@ disk     18.2 GiB free of 50.6 GiB (36%)
 
 SERVICE  STATE    HEALTH  PID    RESTARTS  FOR    LAST EXIT
 api      running  ok      12931  2         2h14m  killed after 3 failed health checks
+```
+
+Real output from the reference Galaxy A30, running Termux from Google Play. Battery and Wi-Fi need
+Termux:API, which that build doesn't have, and Android blocks `/proc/loadavg` for it. Each failed probe
+says why, and everything else keeps working:
+
+```text
+galaxy-a30  edgephone v0.1.0-dev  up 7s
+
+memory   584.9 MiB available of 2.7 GiB
+disk     1.9 GiB free of 22.4 GiB (8%)
+battery  unavailable: termux-battery-status not found: run 'pkg install termux-api'
+cpu      unavailable: open /proc/loadavg: permission denied
+wifi     unavailable: termux-wifi-connectioninfo not found: run 'pkg install termux-api'
+
+SERVICE  STATE    HEALTH   PID    RESTARTS  FOR  LAST EXIT
+web      running  pending  27864  0         7s   -
 ```
 
 ### Example config
@@ -106,7 +123,7 @@ Run `edgephone init` to get the full annotated config ([`cmd/edgephone/example.y
 | `edgephone_battery_percent`, `edgephone_battery_temp_celsius` | From `termux-battery-status` |
 | `edgephone_battery_charging`, `edgephone_battery_plugged` | Charging vs. plugged in but full |
 | `edgephone_wifi_rssi_dbm`, `edgephone_wifi_link_speed_mbps`, `edgephone_wifi_connected` | From `termux-wifi-connectioninfo` |
-| `edgephone_load_average{period}`, `edgephone_cpu_usage_ratio` | `/proc/loadavg`; `/proc/stat` when Android allows it |
+| `edgephone_load_average{period}`, `edgephone_cpu_usage_ratio` | `/proc/loadavg` and `/proc/stat`, when Android allows them (the Google Play build of Termux can read neither) |
 | `edgephone_memory_total_bytes`, `edgephone_memory_available_bytes` | `/proc/meminfo` |
 | `edgephone_disk_total_bytes`, `edgephone_disk_free_bytes` | `statfs` on `$HOME` |
 | `edgephone_service_up`, `edgephone_service_healthy`, `edgephone_service_restarts_total`, `edgephone_service_state` | Per supervised service |
@@ -143,6 +160,7 @@ flowchart LR
 | `internal/agent` | Wires everything together and serves the HTTP endpoints |
 | `internal/doctor` | Setup checks with concrete fixes |
 | `internal/config` | Strict YAML parsing, defaults, validation that reports every error at once |
+| `internal/termux` | Starts programs through `linker64` when Termux forbids executing them directly (Google Play build) |
 
 More detail is in [docs/architecture.md](docs/architecture.md).
 
@@ -150,6 +168,8 @@ More detail is in [docs/architecture.md](docs/architecture.md).
 
 - **Go, single static binary.** One file to copy, nothing to install at runtime, and `CGO_ENABLED=0` cross-compiles from any machine.
 - **Built with `GOOS=android`, not `linux`.** Android has no `/etc/resolv.conf`, and Go's Android target knows how to resolve DNS there. `doctor` warns if you run a linux build on a phone.
+- **Works with both Termux builds.** The Google Play build can't execute files from its own directory, and Go bypasses the
+  `termux-exec` library that normally works around this. edgephone detects it and launches services through `linker64` itself.
 - **No root.** Probes read Termux:API JSON. If Termux:API is missing, that probe reports `edgephone_probe_success{probe="battery"} 0` and the rest keep working.
 - **Every Termux:API call has a timeout.** `termux-battery-status` blocks forever when the companion app isn't installed, which is a very common setup mistake.
 - **Process groups.** Each service runs in its own group, so stopping or restarting it also stops any workers it spawned. Shutdown sends SIGTERM and follows with SIGKILL after `stop_timeout`.
@@ -164,7 +184,15 @@ More detail is in [docs/architecture.md](docs/architecture.md).
 git clone https://github.com/jam-bm/edgephone && cd edgephone
 make test                 # go test -race ./...
 make android              # dist/edgephone_android_arm64
-adb push dist/edgephone_android_arm64 /data/local/tmp/   # or scp it into Termux
+```
+
+To try a build on a phone over USB, copy it in with adb, then install it from Termux:
+
+```bash
+adb push dist/edgephone_android_arm64 /data/local/tmp/edgephone
+adb shell chmod 755 /data/local/tmp/edgephone
+# then, inside Termux:
+cp /data/local/tmp/edgephone $PREFIX/bin/ && edgephone doctor
 ```
 
 ## Roadmap
@@ -184,7 +212,10 @@ Ideas and PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - Supervisor tests use the test binary itself as the supervised process, covering crash loops, health-check restarts, start periods and graceful stop, with no reliance on `sh` or `sleep`.
 - The agent integration test starts the real HTTP server and scrapes `/metrics` and `/status`.
 - CI runs `go vet`, `staticcheck` and `go test -race` on Linux and macOS, and cross-builds `android/arm64`.
+- `internal/termux` tests cover the Play build's argument quirk and `#!` script resolution with fake files.
 - Before each release, a smoke test runs on a real device: [docs/release-checklist.md](docs/release-checklist.md).
+  The reference Galaxy A30 found two bugs no unit test had: a restart that waited for `stop_timeout`, and the
+  Google Play build refusing to start any service. Both now have regression tests.
 
 ## Known Android gotchas
 
