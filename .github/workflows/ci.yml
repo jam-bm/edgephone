@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        if: runner.os == 'Linux'
+        run: test -z "$(gofmt -l . | tee /dev/stderr)"
+      - name: go vet
+        run: go vet ./...
+      - name: staticcheck
+        if: runner.os == 'Linux'
+        run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+      - name: test
+        run: go test -race -count=1 -coverprofile=coverage.out ./...
+      - name: coverage summary
+        if: runner.os == 'Linux'
+        run: go tool cover -func=coverage.out | tail -1
+
+  cross-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [android/arm64, linux/arm64, linux/amd64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: build ${{ matrix.target }}
+        run: |
+          export GOOS=${TARGET%/*} GOARCH=${TARGET#*/} CGO_ENABLED=0
+          go build -trimpath -o edgephone ./cmd/edgephone
+          ls -lh edgephone
+        env:
+          TARGET: ${{ matrix.target }}
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck scripts/install.sh scripts/termux-boot/start-edgephone

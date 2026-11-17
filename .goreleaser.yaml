@@ -1,0 +1,45 @@
+version: 2
+
+project_name: edgephone
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: edgephone
+    main: ./cmd/edgephone
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{ .Version }}"]
+    targets:
+      # android/arm64: the main target. GOOS=android gives Go Android-aware DNS.
+      - android_arm64
+      # linux builds for proot/chroot distros, Raspberry Pi, and running
+      # `edgephone status` from a laptop.
+      - linux_arm64
+      - linux_amd64
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+      - src: scripts/termux-boot/start-edgephone
+        dst: .
+        strip_parent: true
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+release:
+  extra_files:
+    - glob: scripts/install.sh
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude: ["^docs:", "^test:", "^ci:", "^chore:"]

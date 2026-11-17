@@ -1,0 +1,21 @@
+name: Device report
+description: edgephone works (or mostly works) on your phone. Tell us, so others know.
+labels: [device-report]
+body:
+  - type: input
+    id: device
+    attributes:
+      label: Phone and Android version
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: edgephone doctor output
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything vendor-specific you had to do?

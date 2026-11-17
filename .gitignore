@@ -1,0 +1,5 @@
+/dist/
+/edgephone
+*.exe
+coverage.out
+.DS_Store

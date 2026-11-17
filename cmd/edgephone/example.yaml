@@ -1,0 +1,39 @@
+# edgephone configuration. Docs: https://github.com/jam-bm/edgephone
+# Durations accept Go syntax: 500ms, 15s, 2m, 1h.
+
+node:
+  name: galaxy-a30            # shown in metrics and `edgephone status`
+
+# Long-running processes to supervise. Each gets its own log file under
+# logs.dir and is restarted with exponential backoff when it exits.
+services: []
+#  - name: api
+#    cmd: ["./bin/api", "--port", "8080"]
+#    workdir: ~/apps/api
+#    env: { GIN_MODE: release }
+#    health:
+#      http: "http://127.0.0.1:8080/healthz"   # or: tcp: "127.0.0.1:8080"  or: exec: ["./check.sh"]
+#      interval: 15s
+#      timeout: 5s
+#      failures: 3             # consecutive failures before a restart
+#      start_period: 30s       # ignore failures while the service boots
+#    restart:
+#      backoff_initial: 1s
+#      backoff_max: 2m
+#      stable_after: 1m        # reset backoff after running this long
+#    stop_timeout: 10s         # SIGTERM, then SIGKILL after this long
+
+metrics:
+  # 127.0.0.1 keeps /metrics and /status private to the phone.
+  # Use ":9100" so Prometheus on your LAN or Tailscale can scrape it.
+  listen: "127.0.0.1:9100"
+
+probes:
+  interval: 30s
+  disabled: []                # any of: battery, wifi, cpu, memory, disk
+  # disk_path: ~              # filesystem reported by edgephone_disk_*
+
+logs:
+  # dir: ~/.local/state/edgephone/logs
+  max_size_mb: 10
+  max_files: 3

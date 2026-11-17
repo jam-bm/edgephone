@@ -1,0 +1,19 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Termux:Boot runs every executable in ~/.termux/boot/ after the phone boots.
+# install.sh copies this file there.
+
+# Keep the CPU awake while the screen is off.
+termux-wake-lock
+
+# Give Wi-Fi a moment to come up before services start.
+sleep 10
+
+LOG_DIR="$HOME/.local/state/edgephone"
+mkdir -p "$LOG_DIR"
+
+# Restart the agent itself if it ever exits (crash, OOM kill, bad config edit).
+while true; do
+  "$PREFIX/bin/edgephone" agent >>"$LOG_DIR/agent.log" 2>&1
+  echo "$(date -Iseconds) edgephone agent exited with $?; restarting in 10s" >>"$LOG_DIR/agent.log"
+  sleep 10
+done
