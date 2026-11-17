@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/jam-bm/edgephone/internal/termux"
 	"io"
 	"net"
 	"net/http"
-	"os/exec"
 
 	"github.com/jam-bm/edgephone/internal/config"
 )
@@ -74,7 +74,7 @@ type execChecker struct {
 }
 
 func (c execChecker) Check(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx, c.argv[0], c.argv[1:]...)
+	cmd := termux.CommandContext(ctx, c.argv[0], c.argv[1:]...)
 	cmd.Dir = c.dir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		out = bytes.TrimSpace(out)

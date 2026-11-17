@@ -32,6 +32,21 @@ On Android 14+ you can instead enable Developer options > "Disable child process
   Install both from F-Droid. Play Store and F-Droid builds are signed differently and can't talk to each other.
 - The Wi-Fi SSID shows `<unknown ssid>`: Android hides it without location permission. RSSI and link speed still work.
 
+## Termux from Google Play
+
+edgephone works in the Google Play build of Termux, tested on a Galaxy A30 with `googleplay.2026.10.09`.
+That build can't execute files from its own data directory directly, so edgephone starts services through
+`/system/bin/linker64`, the same way the Play build's own `termux-exec` does. You don't need to do anything for this.
+
+What doesn't work there:
+
+- **Battery and Wi-Fi metrics, and starting after a reboot.** Termux:API and Termux:Boot aren't published for
+  the Play build, and the F-Droid versions can't talk to it because they are signed differently.
+- **Load average and CPU usage.** Android denies `/proc/loadavg` and `/proc/stat` to the Play build.
+
+For the full feature set, install Termux, Termux:API and Termux:Boot from F-Droid. Uninstalling the Play build
+first deletes everything inside Termux, so back up what you need.
+
 ## Load average looks very high
 
 On many Android phones the load average sits far above the number of CPU cores even when the phone is idle

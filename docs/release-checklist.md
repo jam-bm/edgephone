@@ -7,6 +7,7 @@ Reference device: Samsung Galaxy A30 (SM-A305FN), Android 11, Termux from F-Droi
 
 ## Install
 
+- [ ] Run the Doctor and Agent checks once in Termux from F-Droid and once in Termux from Google Play
 - [ ] `curl -fsSL …/install.sh | bash` succeeds on a clean Termux and verifies the checksum
 - [ ] `edgephone version` shows the tag and `android/arm64`
 

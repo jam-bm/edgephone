@@ -143,14 +143,34 @@ func (d *doctor) termux() Result {
 	prefix := d.env.Getenv("PREFIX")
 	if strings.Contains(prefix, "/com.termux/") {
 		r.Level, r.Detail = OK, "running inside Termux"
+		if d.playBuild() {
+			r.Level, r.Detail = Warn, "running inside Termux (Google Play build)"
+			r.Fix = playFix
+		}
 		if m := d.props["ro.product.model"]; m != "" {
 			r.Detail += fmt.Sprintf(" on %s %s (Android %s)", d.props["ro.product.manufacturer"], m, d.props["ro.build.version.release"])
 		}
 		return r
 	}
 	r.Level, r.Detail = Warn, "not running inside Termux; phone checks below may not apply"
-	r.Fix = "Install Termux from F-Droid (the Play Store build is outdated) and run edgephone there."
+	r.Fix = "Install Termux from F-Droid (https://f-droid.org/packages/com.termux/) and run edgephone there."
 	return r
+}
+
+// playBuild reports whether this is the Google Play build of Termux. Its
+// companion apps (Termux:API, Termux:Boot) are not published on Google Play,
+// and the F-Droid ones can't talk to it because they are signed differently.
+func (d *doctor) playBuild() bool {
+	return strings.HasPrefix(d.env.Getenv("TERMUX_VERSION"), "googleplay")
+}
+
+const playFix = "Battery and Wi-Fi metrics and starting after a reboot need the Termux:API and Termux:Boot apps,\n" +
+	"which aren't available for the Google Play build. For the full feature set, install Termux,\n" +
+	"Termux:API and Termux:Boot from F-Droid: https://f-droid.org/packages/com.termux/\n" +
+	"Uninstalling the Play build first deletes everything inside Termux, so back up what you need."
+
+func playAppFix(app string) string {
+	return app + " isn't available for the Google Play build of Termux; see the Termux check above."
 }
 
 func (d *doctor) build() Result {
@@ -173,6 +193,9 @@ func (d *doctor) termuxAPI() Result {
 	if _, err := d.env.LookPath("termux-battery-status"); err != nil {
 		r.Level, r.Detail = Fail, "termux-api package not installed; battery and Wi-Fi metrics are disabled"
 		r.Fix = "pkg install termux-api   (and install the Termux:API app from F-Droid)"
+		if d.playBuild() {
+			r.Fix = playAppFix("Termux:API")
+		}
 		return r
 	}
 	// The CLI blocks forever if the companion app is missing, hence the timeout.
@@ -193,6 +216,9 @@ func (d *doctor) termuxAPI() Result {
 		r.Level, r.Detail = Fail, "termux-battery-status did not answer: "+err.Error()
 		r.Fix = "Install the Termux:API *app* from F-Droid (same source as Termux), then open it once.\n" +
 			"Mixing F-Droid and Play Store builds does not work: they are signed differently."
+		if d.playBuild() {
+			r.Fix = playAppFix("Termux:API")
+		}
 		return r
 	}
 	r.Level = OK
@@ -231,7 +257,14 @@ func (d *doctor) loadBoot() *bootInfo {
 	return b
 }
 
-const bootFix = "Install the Termux:Boot app from F-Droid and open it once, then:\n" +
+func (d *doctor) bootFix() string {
+	if d.playBuild() {
+		return playAppFix("Termux:Boot")
+	}
+	return bootFixFDroid
+}
+
+const bootFixFDroid = "Install the Termux:Boot app from F-Droid and open it once, then:\n" +
 	"  mkdir -p ~/.termux/boot && cp scripts/termux-boot/start-edgephone ~/.termux/boot/ && chmod +x ~/.termux/boot/start-edgephone\n" +
 	"(install.sh does this for you.)"
 
@@ -242,9 +275,9 @@ func (d *doctor) bootScript() Result {
 	case b.script != "":
 		r.Level, r.Detail = OK, "autostart script: "+b.script
 	case b.dirExists:
-		r.Level, r.Detail, r.Fix = Warn, "~/.termux/boot exists but no script there starts edgephone", bootFix
+		r.Level, r.Detail, r.Fix = Warn, "~/.termux/boot exists but no script there starts edgephone", d.bootFix()
 	default:
-		r.Level, r.Detail, r.Fix = Warn, "no ~/.termux/boot directory; edgephone will not start after a reboot", bootFix
+		r.Level, r.Detail, r.Fix = Warn, "no ~/.termux/boot directory; edgephone will not start after a reboot", d.bootFix()
 	}
 	return r
 }

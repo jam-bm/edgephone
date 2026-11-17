@@ -28,6 +28,7 @@ import (
 	"github.com/jam-bm/edgephone/internal/agent"
 	"github.com/jam-bm/edgephone/internal/config"
 	"github.com/jam-bm/edgephone/internal/doctor"
+	"github.com/jam-bm/edgephone/internal/termux"
 )
 
 // Set by goreleaser: -ldflags "-X main.version=..."
@@ -53,11 +54,12 @@ Run 'edgephone <command> -h' for command flags.
 `
 
 func main() {
-	if len(os.Args) < 2 {
+	args := termux.Args()
+	if len(args) < 2 {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
 	}
-	cmd, args := os.Args[1], os.Args[2:]
+	cmd, args := args[1], args[2:]
 	var err error
 	switch cmd {
 	case "agent":

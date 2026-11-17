@@ -37,6 +37,10 @@ edgephone agent           # or reboot and let Termux:Boot start it
 
 The installer checks the SHA-256 of the release archive. It installs the binary to `$PREFIX/bin`, writes an example config to `~/.config/edgephone/config.yaml`, and installs `~/.termux/boot/start-edgephone`.
 
+**Termux from Google Play** runs edgephone and its services, and memory and disk metrics work. Battery and Wi-Fi
+metrics and starting after a reboot don't, because Termux:API and Termux:Boot aren't available for the Play build.
+Use the F-Droid builds of all three apps for the full feature set. `edgephone doctor` tells you which build you have.
+
 ### What it looks like
 
 `edgephone doctor` on a fresh phone (sample output):

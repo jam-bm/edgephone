@@ -14,6 +14,8 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+
+	"github.com/jam-bm/edgephone/internal/termux"
 )
 
 // Runner executes a command and returns its stdout. It exists so tests can
@@ -23,7 +25,7 @@ type Runner func(ctx context.Context, name string, args ...string) ([]byte, erro
 // ExecRunner runs real commands.
 func ExecRunner(ctx context.Context, name string, args ...string) ([]byte, error) {
 	var stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := termux.CommandContext(ctx, name, args...)
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if ctx.Err() != nil {

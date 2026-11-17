@@ -18,7 +18,7 @@ func fakePhone(t *testing.T) (Env, map[string]string) {
 	home := t.TempDir()
 	out := map[string]string{
 		"getprop ro.product.manufacturer":  "samsung",
-		"getprop ro.product.model":         "SM-A305F",
+		"getprop ro.product.model":         "SM-A305FN",
 		"getprop ro.build.version.sdk":     "30",
 		"getprop ro.build.version.release": "11",
 		"termux-battery-status":            `{"percentage": 81, "temperature": 30.2}`,
@@ -75,7 +75,7 @@ func TestHealthyPhone(t *testing.T) {
 		}
 	}
 	got := byName(results)
-	if !strings.Contains(got["Termux"].Detail, "samsung SM-A305F (Android 11)") {
+	if !strings.Contains(got["Termux"].Detail, "samsung SM-A305FN (Android 11)") {
 		t.Errorf("termux detail = %q", got["Termux"].Detail)
 	}
 	if !strings.Contains(got["Battery optimization"].Fix, "Never sleeping apps") {
@@ -149,5 +149,28 @@ func TestInvalidConfigFails(t *testing.T) {
 	r := byName(Run(context.Background(), env))["Config"]
 	if r.Level != Fail || !strings.Contains(r.Detail, "cmd is required") {
 		t.Errorf("result = %+v", r)
+	}
+}
+
+// Seen on a Galaxy A30: Termux from Google Play, where Termux:API and
+// Termux:Boot don't exist, so their F-Droid advice would be a dead end.
+func TestGooglePlayTermux(t *testing.T) {
+	env, _ := fakePhone(t)
+	env.Getenv = func(k string) string {
+		return map[string]string{
+			"PREFIX":         "/data/data/com.termux/files/usr",
+			"TERMUX_VERSION": "googleplay.2026.10.09",
+		}[k]
+	}
+	env.LookPath = func(string) (string, error) { return "", exec.ErrNotFound }
+
+	got := byName(Run(context.Background(), env))
+	if r := got["Termux"]; r.Level != Warn || !strings.Contains(r.Detail, "Google Play") || !strings.Contains(r.Fix, "F-Droid") {
+		t.Errorf("Termux = %+v", r)
+	}
+	for _, name := range []string{"Termux:API", "Termux:Boot"} {
+		if r := got[name]; !strings.Contains(r.Fix, "Google Play build") {
+			t.Errorf("%s fix should explain the Play build: %q", name, r.Fix)
+		}
 	}
 }

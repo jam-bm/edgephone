@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+- Works in the Google Play build of Termux: services are started through `linker64`, and `doctor` explains which
+  features need the F-Droid build.
+- Services whose main process dies while a child holds the log pipe are now restarted immediately.
+
 ## [0.1.0]
 
 ### Added

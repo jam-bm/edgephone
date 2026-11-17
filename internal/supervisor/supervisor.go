@@ -6,10 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jam-bm/edgephone/internal/termux"
 	"io"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -202,7 +202,7 @@ func (s *service) runOnce(ctx context.Context, out io.Writer, event func(string,
 	defer cancel(nil)
 
 	argv := s.cfg.Cmd
-	cmd := exec.CommandContext(runCtx, argv[0], argv[1:]...)
+	cmd := termux.CommandContext(runCtx, argv[0], argv[1:]...)
 	cmd.Dir = s.cfg.Workdir
 	cmd.Env = os.Environ()
 	for k, v := range s.cfg.Env {
