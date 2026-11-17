@@ -1,6 +1,7 @@
 package supervisor
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -76,10 +77,14 @@ func (c execChecker) Check(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, c.argv[0], c.argv[1:]...)
 	cmd.Dir = c.dir
 	if out, err := cmd.CombinedOutput(); err != nil {
+		out = bytes.TrimSpace(out)
+		if len(out) == 0 {
+			return err
+		}
 		if len(out) > 200 {
 			out = out[:200]
 		}
-		return fmt.Errorf("%v: %s", err, out)
+		return fmt.Errorf("%w: %s", err, out)
 	}
 	return nil
 }

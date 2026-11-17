@@ -7,7 +7,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -29,6 +31,17 @@ func TestMain(m *testing.M) {
 	case "sleep":
 		fmt.Println("sleeping")
 		time.Sleep(time.Hour)
+	case "orphan":
+		// Leave a child behind that inherits stdout, then die. The child keeps
+		// the log pipe open, which must not stop the supervisor noticing the exit.
+		child := exec.Command(os.Args[0])
+		child.Env = append(os.Environ(), "EDGEPHONE_HELPER=sleep")
+		child.Stdout = os.Stdout
+		if err := child.Start(); err != nil {
+			os.Exit(98)
+		}
+		_ = os.WriteFile(os.Getenv("EDGEPHONE_PIDFILE"), []byte(strconv.Itoa(child.Process.Pid)), 0o644)
+		os.Exit(3)
 	}
 	os.Exit(99)
 }

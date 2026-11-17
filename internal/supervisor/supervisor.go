@@ -208,17 +208,42 @@ func (s *service) runOnce(ctx context.Context, out io.Writer, event func(string,
 	for k, v := range s.cfg.Env {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
-	cmd.Stdout, cmd.Stderr = out, out
+	// Give the child the write end of our own pipe instead of an io.Writer.
+	// With an io.Writer, exec.Cmd.Wait also waits for every process holding
+	// the pipe, so a leftover child (`sh -c 'worker & wait'` after the shell
+	// is killed) would hide the exit until WaitDelay. With an *os.File, Wait
+	// returns when the main process exits; cleanupGroup then kills the rest
+	// of the group, which closes the pipe and ends the copy below.
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		return fmt.Errorf("failed to start: %w", err)
+	}
+	cmd.Stdout, cmd.Stderr = pw, pw
 	setProcAttr(cmd)
 	// On cancel: SIGTERM first, SIGKILL after StopTimeout.
 	cmd.Cancel = func() error { return terminate(cmd) }
 	cmd.WaitDelay = s.cfg.StopTimeout
 
-	if err := cmd.Start(); err != nil {
+	err = cmd.Start()
+	pw.Close() // the child has its own copy now
+	if err != nil {
+		pr.Close()
 		err = fmt.Errorf("failed to start: %w", err)
 		s.update(func(st *Status) { st.StartError = err.Error() })
 		return err
 	}
+	copied := make(chan struct{})
+	go func() { _, _ = io.Copy(out, pr); close(copied) }()
+	defer func() {
+		// Normally the pipe closes as soon as the group is killed. A process
+		// that left the group (setsid, double fork) can keep it open; don't
+		// let that block restarts.
+		select {
+		case <-copied:
+		case <-time.After(time.Second):
+		}
+		pr.Close()
+	}()
 	pid := cmd.Process.Pid
 	event("started pid %d: %q", pid, argv)
 	s.log.Info("service started", "pid", pid)
@@ -233,7 +258,7 @@ func (s *service) runOnce(ctx context.Context, out io.Writer, event func(string,
 		}()
 	}
 
-	err := cmd.Wait()
+	err = cmd.Wait()
 	cleanupGroup(pid) // reap anything the service left behind in its process group
 	cancel(nil)
 	wg.Wait()

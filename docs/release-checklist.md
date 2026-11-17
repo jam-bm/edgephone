@@ -3,7 +3,7 @@
 CI covers logic. This checklist covers the things only a real phone can show.
 Record the device and Android version in the release notes.
 
-Reference device: Samsung Galaxy A30 (SM-A305F), Android 11, Termux from F-Droid.
+Reference device: Samsung Galaxy A30 (SM-A305FN), Android 11, Termux from F-Droid.
 
 ## Install
 

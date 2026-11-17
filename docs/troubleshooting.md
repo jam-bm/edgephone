@@ -32,6 +32,13 @@ On Android 14+ you can instead enable Developer options > "Disable child process
   Install both from F-Droid. Play Store and F-Droid builds are signed differently and can't talk to each other.
 - The Wi-Fi SSID shows `<unknown ssid>`: Android hides it without location permission. RSSI and link speed still work.
 
+## Load average looks very high
+
+On many Android phones the load average sits far above the number of CPU cores even when the phone is idle
+(18-20 on the reference Galaxy A30, which has 8 cores). Linux counts threads waiting on I/O or in vendor drivers
+as "running", and Android kernels keep many of those. Watch how it changes over time, and use
+`edgephone_cpu_usage_ratio` (when available) for actual CPU use.
+
 ## CPU usage is missing but load average works
 
 This is expected on Android 8 and later, where SELinux blocks `/proc/stat` for apps. `edgephone_load_average` is
