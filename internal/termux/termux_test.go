@@ -43,9 +43,11 @@ func TestWrap(t *testing.T) {
 		return p
 	}
 	sh := write("sh", "\x7fELF fake binary")
-	env := write("env", "\x7fELF fake binary")
+	// Android has no /usr, so /usr/bin/x in a #! line means $PREFIX/bin/x. Use a
+	// name no build host has in /usr/bin, or Linux CI would find its own copy.
+	env := write("edgephone-fake-env", "\x7fELF fake binary")
 	script := write("termux-battery-status", "#!"+sh+"\nexec termux-api BatteryStatus\n")
-	envScript := write("tool", "#!/usr/bin/env  python3 -u\nprint()\n")
+	envScript := write("tool", "#!/usr/bin/edgephone-fake-env  python3 -u\nprint()\n")
 	const linker = "/system/bin/linker64"
 
 	for _, tc := range []struct {
